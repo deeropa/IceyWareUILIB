@@ -36,7 +36,7 @@ local TS = 18
 local CS = 20
 local RH = 28
 local TH = 28
-local CORNER = UDim.new(0, 4)
+local CORNER = UDim.new(0, 2)
 
 -- ===== Helpers =====
 local function corner(p, r)
@@ -147,7 +147,7 @@ function Library:CreateWindow(title, toggleKey)
 
     local tLayout = Instance.new("UIListLayout")
     tLayout.FillDirection = Enum.FillDirection.Horizontal
-    tLayout.Padding = UDim.new(0, 3)
+    tLayout.Padding = UDim.new(0, 4)
     tLayout.SortOrder = Enum.SortOrder.LayoutOrder
     tLayout.Parent = tabBar
 
@@ -158,7 +158,7 @@ function Library:CreateWindow(title, toggleKey)
     main.Name = "MainFrame"
     main.BackgroundColor3 = C.mainBg
     main.BorderSizePixel = 0
-    main.Position = UDim2.new(0, 0, 0, TH + 2)
+    main.Position = UDim2.new(0, 0, 0, TH + 4)
     main.Size = UDim2.new(1, 0, 0, 326)
     main.Parent = wrapper
     corner(main)
@@ -227,7 +227,7 @@ function Library.AddTab(self, name)
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.Parent = self._tabBar
-    corner(btn, UDim.new(0, 8))
+    corner(btn, UDim.new(0, 6))
 
     local bStroke = Instance.new("UIStroke")
     bStroke.Color = C.tabBorder
