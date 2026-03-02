@@ -35,7 +35,7 @@ local FONT_R = Font.fromEnum(Enum.Font.SourceSans)
 local TS = 18
 local CS = 20
 local RH = 28
-local TH = 24
+local TH = 28
 local CORNER = UDim.new(0, 4)
 
 -- ===== Helpers =====
@@ -231,13 +231,13 @@ function Library.AddTab(self, name)
 
     local bStroke = Instance.new("UIStroke")
     bStroke.Color = C.tabBorder
-    bStroke.Thickness = 1
+    bStroke.Thickness = 2
     bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     bStroke.Parent = btn
 
     local bPad = Instance.new("UIPadding")
-    bPad.PaddingLeft = UDim.new(0, 12)
-    bPad.PaddingRight = UDim.new(0, 12)
+    bPad.PaddingLeft = UDim.new(0, 16)
+    bPad.PaddingRight = UDim.new(0, 16)
     bPad.Parent = btn
 
     local bLabel = Instance.new("TextLabel")
@@ -247,7 +247,7 @@ function Library.AddTab(self, name)
     bLabel.Text = name
     bLabel.TextColor3 = C.textLight
     bLabel.FontFace = FONT
-    bLabel.TextSize = 14
+    bLabel.TextSize = 15
     bLabel.Parent = btn
 
     tab._button = btn
