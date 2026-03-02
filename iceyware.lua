@@ -16,7 +16,7 @@ local C = {
     mainBg      = Color3.fromRGB(81, 81, 81),       -- exact from Studio
     contentBg   = Color3.fromRGB(81, 81, 81),        -- same as main frame
     tabFace     = Color3.fromRGB(65, 65, 68),         -- exact from color picker
-    tabActive   = Color3.fromRGB(82, 84, 88),         -- tab selected (lighter)
+    tabActive   = Color3.fromRGB(75, 75, 78),         -- active tab (subtly lighter)
     tabBorder   = Color3.fromRGB(41, 43, 45),         -- exact from screenshot
     border      = Color3.fromRGB(50, 50, 50),         -- main frame border
     checkOn     = Color3.fromRGB(45, 85, 140),        -- blue checkbox ON
@@ -227,11 +227,11 @@ function Library.AddTab(self, name)
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.Parent = self._tabBar
-    corner(btn)
+    corner(btn, UDim.new(0, 8))
 
     local bStroke = Instance.new("UIStroke")
     bStroke.Color = C.tabBorder
-    bStroke.Thickness = 2
+    bStroke.Thickness = 3
     bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     bStroke.Parent = btn
 
