@@ -233,7 +233,34 @@ function Library:CreateWindow(title, toggleKey)
         end
     end)
 
+    -- Options compatibility shim (Fluent API compat)
+    -- Allows: Options.FlagName.Value, Options.FlagName:SetValue(v)
+    self.Options = setmetatable({}, {
+        __index = function(_, flagName)
+            local flagRef = self._flags
+            -- Return a proxy per flag that reads live values
+            return setmetatable({}, {
+                __index = function(_, key)
+                    if key == "Value" then
+                        return flagRef[flagName] and flagRef[flagName].value
+                    elseif key == "SetValue" then
+                        return function(_, v)
+                            if flagRef[flagName] then flagRef[flagName].set(v) end
+                        end
+                    end
+                end
+            })
+        end
+    })
+
     return self
+end
+
+-- Select a tab by index
+function Library:SelectTab(index)
+    if self._tabs[index] then
+        self:_switchTab(self._tabs[index])
+    end
 end
 
 -- ===== Tab =====
@@ -320,10 +347,21 @@ function Library.AddTab(self, name)
 end
 
 -- ===== Toggle (checkbox left, text right) =====
-function Tab:AddToggle(flag, label, default, callback)
+-- Supports both: AddToggle(flag, label, default, cb) AND AddToggle(flag, {Title, Default})
+function Tab:AddToggle(flag, labelOrOpts, default, callback)
     local lib = self._library
-    local val = default or false
-    callback = callback or function() end
+    local label, val
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        val = labelOrOpts.Default or false
+        callback = callback or function() end
+    else
+        label = labelOrOpts or flag
+        val = default or false
+        callback = callback or function() end
+    end
+
+    local _onChangedCb = nil
 
     local row = Instance.new("TextButton")
     row.Name = "T_" .. flag
@@ -376,19 +414,38 @@ function Tab:AddToggle(flag, label, default, callback)
         mark.Text = v and "✓" or ""
         lib._flags[flag].value = v
         callback(v)
+        if _onChangedCb then _onChangedCb(v) end
     end
 
     row.MouseButton1Click:Connect(function() set(not val) end)
     lib._flags[flag] = { value = val, set = set, type = "toggle" }
-    return row
+
+    -- Return object with OnChanged for Fluent compat
+    local obj = {}
+    function obj:OnChanged(cb) _onChangedCb = cb; return obj end
+    function obj:SetValue(v) set(v) end
+    return obj
 end
 
 -- ===== Slider =====
-function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
+-- Supports both: AddSlider(flag, label, default, min, max, rounding, cb) AND AddSlider(flag, {Title, Default, Min, Max, Rounding, Callback})
+function Tab:AddSlider(flag, labelOrOpts, default, min, max, rounding, callback)
     local lib = self._library
-    local val = default or min
-    callback = callback or function() end
-    rounding = rounding or 1
+    local label, val
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        val = labelOrOpts.Default or 0
+        min = labelOrOpts.Min or 0
+        max = labelOrOpts.Max or 100
+        rounding = labelOrOpts.Rounding or 1
+        callback = labelOrOpts.Callback or function() end
+    else
+        label = labelOrOpts or flag
+        val = default or min
+        callback = callback or function() end
+        rounding = rounding or 1
+    end
+    local _onChangedCb = nil
 
     local fr = Instance.new("Frame")
     fr.Name = "S_" .. flag
@@ -456,6 +513,7 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
         txt.Text = label .. ": " .. tostring(v)
         lib._flags[flag].value = v
         callback(v)
+        if _onChangedCb then _onChangedCb(v) end
     end
 
     local drag = false
@@ -471,15 +529,33 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
     end)
 
     lib._flags[flag] = { value = val, set = set, type = "slider" }
-    return fr
+
+    local obj = {}
+    function obj:OnChanged(cb) _onChangedCb = cb; return obj end
+    return obj
 end
 
 -- ===== Keybind =====
-function Tab:AddKeybind(flag, label, default, onPress, onBind)
+-- Supports both: AddKeybind(flag, label, default, onPress, onBind) AND AddKeybind(flag, {Title, Default, Callback})
+function Tab:AddKeybind(flag, labelOrOpts, default, onPress, onBind)
     local lib = self._library
-    local current = default or Enum.KeyCode.F2
-    onPress = onPress or function() end
-    onBind = onBind or function() end
+    local label, current
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        local defKey = labelOrOpts.Default or "F2"
+        if type(defKey) == "string" then
+            current = Enum.KeyCode[defKey] or Enum.KeyCode.F2
+        else
+            current = defKey
+        end
+        onPress = labelOrOpts.Callback or function() end
+        onBind = function() end
+    else
+        label = labelOrOpts or flag
+        current = default or Enum.KeyCode.F2
+        onPress = onPress or function() end
+        onBind = onBind or function() end
+    end
 
     local row = Instance.new("Frame")
     row.Name = "K_" .. flag
@@ -556,8 +632,16 @@ function Tab:AddKeybind(flag, label, default, onPress, onBind)
 end
 
 -- ===== Button =====
-function Tab:AddButton(label, callback)
-    callback = callback or function() end
+-- Supports both: AddButton(label, callback) AND AddButton({Title, Callback})
+function Tab:AddButton(labelOrOpts, callback)
+    local label
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or "Button"
+        callback = labelOrOpts.Callback or function() end
+    else
+        label = labelOrOpts or "Button"
+        callback = callback or function() end
+    end
 
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, RH)
@@ -582,12 +666,21 @@ function Tab:AddButton(label, callback)
     return btn
 end
 
--- ===== Text Input =====
-function Tab:AddInput(flag, label, default, placeholder, callback)
+-- Supports both: AddInput(flag, label, default, placeholder, cb) AND AddInput(flag, {Title, Default, Placeholder, Callback})
+function Tab:AddInput(flag, labelOrOpts, default, placeholder, callback)
     local lib = self._library
-    default = default or ""
-    placeholder = placeholder or ""
-    callback = callback or function() end
+    local label
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        default = labelOrOpts.Default or ""
+        placeholder = labelOrOpts.Placeholder or ""
+        callback = labelOrOpts.Callback or function() end
+    else
+        label = labelOrOpts or flag
+        default = default or ""
+        placeholder = placeholder or ""
+        callback = callback or function() end
+    end
 
     local row = Instance.new("Frame")
     row.Name = "I_" .. (flag or label)
@@ -655,11 +748,19 @@ function Tab:AddInput(flag, label, default, placeholder, callback)
     return obj
 end
 
--- ===== Color Picker =====
-function Tab:AddColorpicker(flag, label, default, callback)
+-- Supports both: AddColorpicker(flag, label, default, cb) AND AddColorpicker(flag, {Title, Default})
+function Tab:AddColorpicker(flag, labelOrOpts, default, callback)
     local lib = self._library
-    default = default or Color3.fromRGB(255, 255, 255)
-    callback = callback or function() end
+    local label
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        default = labelOrOpts.Default or Color3.fromRGB(255, 255, 255)
+        callback = callback or function() end
+    else
+        label = labelOrOpts or flag
+        default = default or Color3.fromRGB(255, 255, 255)
+        callback = callback or function() end
+    end
     local r, g, b = math.floor(default.R * 255), math.floor(default.G * 255), math.floor(default.B * 255)
     local expanded = false
 
@@ -854,10 +955,21 @@ function Tab:AddSeparator()
 end
 
 -- ===== Dropdown =====
-function Tab:AddDropdown(flag, label, options, default, callback)
+-- Supports both: AddDropdown(flag, label, options, default, cb) AND AddDropdown(flag, {Title, Values, Default})
+function Tab:AddDropdown(flag, labelOrOpts, options, default, callback)
     local lib = self._library
-    options = options or {}
-    callback = callback or function() end
+    local label
+    if type(labelOrOpts) == "table" then
+        label = labelOrOpts.Title or flag
+        options = labelOrOpts.Values or {}
+        default = labelOrOpts.Default
+        callback = callback or function() end
+    else
+        label = labelOrOpts or flag
+        options = options or {}
+        callback = callback or function() end
+    end
+    local _onChangedCb = nil
     local selected = default or (options[1] or "")
     local open = false
 
@@ -968,6 +1080,8 @@ function Tab:AddDropdown(flag, label, options, default, callback)
     end)
 
     local obj = { value = selected }
+    function obj:OnChanged(cb) _onChangedCb = cb; return obj end
+    function obj:SetValue(v) self:SetSelected(v) end
     function obj:Refresh(newOpts)
         options = newOpts or {}
         buildOptions(options)
@@ -976,6 +1090,7 @@ function Tab:AddDropdown(flag, label, options, default, callback)
         selected = v
         hLabel.Text = label .. ": " .. tostring(v)
         if lib and flag then lib._flags[flag].value = v end
+        if _onChangedCb then _onChangedCb(v) end
     end
     function obj:GetSelected()
         return selected
