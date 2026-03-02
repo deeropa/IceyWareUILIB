@@ -8,37 +8,41 @@ Library.__index = Library
 Library._flags = {}
 Library._configFolder = "RogueHub/configs"
 
--- ===== IceyWare exact colors =====
+local UIS = game:GetService("UserInputService")
+local HS = game:GetService("HttpService")
+
+-- ===== IceyWare EXACT colors from screenshot =====
 local C = {
-    frameBg = Color3.fromRGB(100, 105, 110),       -- grey frame background
-    frameBorder = Color3.fromRGB(65, 68, 72),       -- darker border
-    tabBg = Color3.fromRGB(90, 94, 100),            -- tab background
-    tabActive = Color3.fromRGB(110, 115, 122),      -- active tab slightly lighter
-    tabBorder = Color3.fromRGB(60, 63, 68),         -- tab border
-    contentBg = Color3.fromRGB(95, 100, 106),       -- content area
-    checkOn = Color3.fromRGB(70, 100, 140),         -- checked checkbox fill (blue-grey)
-    checkOff = Color3.fromRGB(180, 185, 190),       -- unchecked checkbox (light grey)
-    checkBorder = Color3.fromRGB(50, 53, 58),       -- checkbox border
-    text = Color3.fromRGB(35, 35, 38),              -- dark text (IceyWare uses dark text)
-    textLight = Color3.fromRGB(220, 222, 225),      -- light text for tabs
-    white = Color3.fromRGB(255, 255, 255),
-    sliderFill = Color3.fromRGB(70, 100, 140),
-    sliderBg = Color3.fromRGB(75, 78, 84),
-    btnBg = Color3.fromRGB(105, 110, 116),
-    btnBorder = Color3.fromRGB(60, 63, 68),
+    outerBg = Color3.fromRGB(78, 82, 88),         -- main frame bg (dark grey)
+    outerBorder = Color3.fromRGB(45, 48, 52),      -- thick outer border
+    tabFace = Color3.fromRGB(88, 92, 98),          -- tab button face
+    tabFaceActive = Color3.fromRGB(78, 82, 88),    -- active tab (matches bg = blends in)
+    tabBorderLight = Color3.fromRGB(115, 118, 124), -- tab top/left highlight
+    tabBorderDark = Color3.fromRGB(50, 53, 58),    -- tab bottom/right shadow
+    contentBg = Color3.fromRGB(72, 76, 82),        -- content area (slightly darker)
+    contentBorder = Color3.fromRGB(50, 53, 58),    -- content inner border
+    checkOnBg = Color3.fromRGB(55, 85, 130),       -- checked = blue
+    checkOffBg = Color3.fromRGB(200, 203, 208),    -- unchecked = white/light
+    checkBorder = Color3.fromRGB(35, 38, 42),      -- checkbox border (very dark)
+    checkMark = Color3.fromRGB(255, 255, 255),     -- ✓ color
+    textDark = Color3.fromRGB(20, 20, 22),         -- main text (near black)
+    textTab = Color3.fromRGB(210, 212, 216),       -- tab text (light)
+    sliderFill = Color3.fromRGB(55, 85, 130),
+    sliderBg = Color3.fromRGB(55, 58, 64),
+    btnFace = Color3.fromRGB(82, 86, 92),
+    btnBorder = Color3.fromRGB(50, 53, 58),
 }
 
-local FONT = Font.fromEnum(Enum.Font.SourceSans)
-local FONT_BOLD = Font.fromEnum(Enum.Font.SourceSansBold)
-local FONT_SIZE = 16
-local ROW_HEIGHT = 22
-local TAB_HEIGHT = 22
-local WINDOW_W = 320
-local WINDOW_H = 300
+local FONT = Font.fromEnum(Enum.Font.SourceSansBold)
+local FONT_REG = Font.fromEnum(Enum.Font.SourceSans)
+local TEXT_SIZE = 18
+local CHECK_SIZE = 20
+local ROW_HEIGHT = 28
+local TAB_H = 24
+local WIN_W = 420
+local WIN_H = 320
 
 -- ===== HELPERS =====
-local UIS = game:GetService("UserInputService")
-
 local function makeDraggable(frame, handle)
     local d, ds, sp
     handle.InputBegan:Connect(function(i)
@@ -55,59 +59,45 @@ local function makeDraggable(frame, handle)
     end)
 end
 
--- ===== CONFIG SYSTEM =====
+-- ===== CONFIG =====
 function Library:_ensureFolder()
     if not isfolder(self._configFolder) then makefolder(self._configFolder) end
 end
-
-function Library:SaveConfig(name)
+function Library:SaveConfig(n)
     self:_ensureFolder()
-    local data = {}
-    for flag, info in pairs(self._flags) do data[flag] = info.value end
-    writefile(self._configFolder .. "/" .. name .. ".json", game:GetService("HttpService"):JSONEncode(data))
+    local d = {}; for f, i in pairs(self._flags) do d[f] = i.value end
+    writefile(self._configFolder.."/"..n..".json", HS:JSONEncode(d))
 end
-
-function Library:LoadConfig(name)
+function Library:LoadConfig(n)
     self:_ensureFolder()
-    local path = self._configFolder .. "/" .. name .. ".json"
-    if not isfile(path) then return false end
-    local ok, data = pcall(function() return game:GetService("HttpService"):JSONDecode(readfile(path)) end)
+    local p = self._configFolder.."/"..n..".json"
+    if not isfile(p) then return false end
+    local ok, d = pcall(function() return HS:JSONDecode(readfile(p)) end)
     if not ok then return false end
-    for flag, val in pairs(data) do
-        if self._flags[flag] then self._flags[flag].set(val) end
-    end
+    for f, v in pairs(d) do if self._flags[f] then self._flags[f].set(v) end end
     return true
 end
-
-function Library:DeleteConfig(name)
+function Library:DeleteConfig(n)
     self:_ensureFolder()
-    local path = self._configFolder .. "/" .. name .. ".json"
-    if isfile(path) then delfile(path) end
+    local p = self._configFolder.."/"..n..".json"
+    if isfile(p) then delfile(p) end
 end
-
 function Library:ListConfigs()
     self:_ensureFolder()
-    local files = listfiles(self._configFolder)
-    local configs = {}
-    for _, f in pairs(files) do
-        local name = f:match("([^/\\]+)%.json$")
-        if name then table.insert(configs, name) end
+    local r = {}
+    for _, f in pairs(listfiles(self._configFolder)) do
+        local n = f:match("([^/\\]+)%.json$")
+        if n then table.insert(r, n) end
     end
-    return configs
+    return r
 end
-
-function Library:SetAutoload(name)
-    self:_ensureFolder()
-    writefile(self._configFolder .. "/autoload.txt", name)
+function Library:SetAutoload(n)
+    self:_ensureFolder(); writefile(self._configFolder.."/autoload.txt", n)
 end
-
 function Library:LoadAutoload()
     self:_ensureFolder()
-    local path = self._configFolder .. "/autoload.txt"
-    if isfile(path) then
-        local name = readfile(path)
-        if name and name ~= "" then self:LoadConfig(name) end
-    end
+    local p = self._configFolder.."/autoload.txt"
+    if isfile(p) then local n = readfile(p); if n ~= "" then self:LoadConfig(n) end end
 end
 
 -- ===== WINDOW =====
@@ -126,28 +116,28 @@ function Library:CreateWindow(title, toggleKey)
     if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
     self._screenGui = sg
 
-    -- Main frame — NO rounded corners, positioned right side
+    -- Main frame — OPAQUE dark grey, sharp corners
     local main = Instance.new("Frame")
     main.Name = "Main"
-    main.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
-    main.Position = UDim2.new(1, -WINDOW_W - 10, 0.5, -WINDOW_H / 2)
-    main.BackgroundColor3 = C.frameBg
-    main.BackgroundTransparency = 0.15
+    main.Size = UDim2.new(0, WIN_W, 0, WIN_H)
+    main.Position = UDim2.new(1, -WIN_W - 10, 0.15, 0)
+    main.BackgroundColor3 = C.outerBg
+    main.BackgroundTransparency = 0
     main.BorderSizePixel = 0
     main.Parent = sg
     self._main = main
 
-    -- Outer border (1px dark)
-    local border = Instance.new("UIStroke")
-    border.Color = C.frameBorder
-    border.Thickness = 1
-    border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    border.Parent = main
+    -- THICK outer border (2px, very dark)
+    local outerStroke = Instance.new("UIStroke")
+    outerStroke.Color = C.outerBorder
+    outerStroke.Thickness = 2
+    outerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    outerStroke.Parent = main
 
-    -- Tab bar — flush at top, no padding, no title bar
+    -- Tab bar at top
     local tabBar = Instance.new("Frame")
     tabBar.Name = "TabBar"
-    tabBar.Size = UDim2.new(1, 0, 0, TAB_HEIGHT)
+    tabBar.Size = UDim2.new(1, 0, 0, TAB_H + 4)
     tabBar.Position = UDim2.new(0, 0, 0, 0)
     tabBar.BackgroundTransparency = 1
     tabBar.ClipsDescendants = true
@@ -156,23 +146,35 @@ function Library:CreateWindow(title, toggleKey)
     local tabLayout = Instance.new("UIListLayout")
     tabLayout.FillDirection = Enum.FillDirection.Horizontal
     tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tabLayout.Padding = UDim.new(0, 0)
+    tabLayout.Padding = UDim.new(0, 2)
     tabLayout.Parent = tabBar
+
+    local tabPad = Instance.new("UIPadding")
+    tabPad.PaddingLeft = UDim.new(0, 4)
+    tabPad.PaddingTop = UDim.new(0, 4)
+    tabPad.Parent = tabBar
 
     self._tabBar = tabBar
     makeDraggable(main, tabBar)
 
-    -- Content area — below tabs
+    -- Content area — darker inset box below tabs
     local content = Instance.new("Frame")
     content.Name = "Content"
-    content.Size = UDim2.new(1, -2, 1, -TAB_HEIGHT - 2)
-    content.Position = UDim2.new(0, 1, 0, TAB_HEIGHT + 1)
+    content.Size = UDim2.new(1, -8, 1, -TAB_H - 10)
+    content.Position = UDim2.new(0, 4, 0, TAB_H + 6)
     content.BackgroundColor3 = C.contentBg
-    content.BackgroundTransparency = 0.15
+    content.BackgroundTransparency = 0
     content.BorderSizePixel = 0
     content.ClipsDescendants = true
     content.Parent = main
     self._contentArea = content
+
+    -- Content inner border
+    local cStroke = Instance.new("UIStroke")
+    cStroke.Color = C.contentBorder
+    cStroke.Thickness = 2
+    cStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    cStroke.Parent = content
 
     -- Toggle key
     toggleKey = toggleKey or "K"
@@ -194,36 +196,37 @@ Tab.__index = Tab
 function Library:_switchTab(tab)
     for _, t in pairs(self._tabs) do
         t._content.Visible = false
-        t._button.BackgroundColor3 = C.tabBg
+        t._button.BackgroundColor3 = C.tabFace
     end
     tab._content.Visible = true
-    tab._button.BackgroundColor3 = C.tabActive
+    tab._button.BackgroundColor3 = C.tabFaceActive
 end
 
 function Library.AddTab(self, name)
     local tab = setmetatable({}, Tab)
     tab._library = self
 
-    -- Tab button — sharp edges, border
+    -- Tab button — raised 3D look with border
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Size = UDim2.new(0, 0, 1, 0)
+    btn.Size = UDim2.new(0, 0, 0, TAB_H)
     btn.AutomaticSize = Enum.AutomaticSize.X
-    btn.BackgroundColor3 = C.tabBg
+    btn.BackgroundColor3 = C.tabFace
     btn.BorderSizePixel = 0
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.Parent = self._tabBar
 
-    local bStroke = Instance.new("UIStroke")
-    bStroke.Color = C.tabBorder
-    bStroke.Thickness = 1
-    bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    bStroke.Parent = btn
+    -- Tab border (embossed look)
+    local tStroke = Instance.new("UIStroke")
+    tStroke.Color = C.tabBorderDark
+    tStroke.Thickness = 2
+    tStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    tStroke.Parent = btn
 
     local bPad = Instance.new("UIPadding")
-    bPad.PaddingLeft = UDim.new(0, 10)
-    bPad.PaddingRight = UDim.new(0, 10)
+    bPad.PaddingLeft = UDim.new(0, 12)
+    bPad.PaddingRight = UDim.new(0, 12)
     bPad.Parent = btn
 
     local bLabel = Instance.new("TextLabel")
@@ -231,20 +234,20 @@ function Library.AddTab(self, name)
     bLabel.AutomaticSize = Enum.AutomaticSize.X
     bLabel.BackgroundTransparency = 1
     bLabel.Text = name
-    bLabel.TextColor3 = C.textLight
-    bLabel.FontFace = FONT_BOLD
+    bLabel.TextColor3 = C.textTab
+    bLabel.FontFace = FONT
     bLabel.TextSize = 14
     bLabel.Parent = btn
 
     tab._button = btn
 
-    -- Content scroll
+    -- Scrolling content
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = name
     scroll.Size = UDim2.new(1, 0, 1, 0)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 2
+    scroll.ScrollBarThickness = 3
     scroll.ScrollBarImageColor3 = C.sliderFill
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -252,14 +255,14 @@ function Library.AddTab(self, name)
     scroll.Parent = self._contentArea
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 0)
+    layout.Padding = UDim.new(0, 2)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Parent = scroll
 
     local pad = Instance.new("UIPadding")
-    pad.PaddingTop = UDim.new(0, 4)
-    pad.PaddingLeft = UDim.new(0, 6)
-    pad.PaddingRight = UDim.new(0, 6)
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.PaddingRight = UDim.new(0, 8)
     pad.Parent = scroll
 
     tab._content = scroll
@@ -267,16 +270,16 @@ function Library.AddTab(self, name)
     btn.MouseButton1Click:Connect(function() self:_switchTab(tab) end)
     table.insert(self._tabs, tab)
     if #self._tabs == 1 then self:_switchTab(tab) end
-
     return tab
 end
 
--- ===== TOGGLE — IceyWare exact: checkbox LEFT, text RIGHT, no bg =====
+-- ===== TOGGLE — IceyWare exact style =====
 function Tab:AddToggle(flag, label, default, callback)
     local lib = self._library
     local value = default or false
     callback = callback or function() end
 
+    -- Row — transparent background
     local row = Instance.new("TextButton")
     row.Name = "T_" .. flag
     row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
@@ -286,51 +289,51 @@ function Tab:AddToggle(flag, label, default, callback)
     row.AutoButtonColor = false
     row.Parent = self._content
 
-    -- Checkbox square — sharp corners
+    -- BIG checkbox with THICK border
     local box = Instance.new("Frame")
-    box.Size = UDim2.new(0, 16, 0, 16)
-    box.Position = UDim2.new(0, 0, 0.5, -8)
-    box.BackgroundColor3 = value and C.checkOn or C.checkOff
+    box.Size = UDim2.new(0, CHECK_SIZE, 0, CHECK_SIZE)
+    box.Position = UDim2.new(0, 0, 0.5, -CHECK_SIZE/2)
+    box.BackgroundColor3 = value and C.checkOnBg or C.checkOffBg
     box.BorderSizePixel = 0
     box.Parent = row
 
-    local boxBorder = Instance.new("UIStroke")
-    boxBorder.Color = C.checkBorder
-    boxBorder.Thickness = 1
-    boxBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    boxBorder.Parent = box
+    local boxStroke = Instance.new("UIStroke")
+    boxStroke.Color = C.checkBorder
+    boxStroke.Thickness = 2
+    boxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    boxStroke.Parent = box
 
-    local checkMark = Instance.new("TextLabel")
-    checkMark.Size = UDim2.new(1, 0, 1, 0)
-    checkMark.BackgroundTransparency = 1
-    checkMark.Text = value and "✓" or ""
-    checkMark.TextColor3 = C.white
-    checkMark.FontFace = FONT_BOLD
-    checkMark.TextSize = 14
-    checkMark.Parent = box
+    -- Check mark — bold, centered
+    local mark = Instance.new("TextLabel")
+    mark.Size = UDim2.new(1, 0, 1, 0)
+    mark.BackgroundTransparency = 1
+    mark.Text = value and "✓" or ""
+    mark.TextColor3 = C.checkMark
+    mark.FontFace = FONT
+    mark.TextSize = 16
+    mark.Parent = box
 
-    -- Label text
+    -- Label — BOLD, DARK, LARGE like IceyWare
     local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -24, 1, 0)
-    txt.Position = UDim2.new(0, 22, 0, 0)
+    txt.Size = UDim2.new(1, -CHECK_SIZE - 10, 1, 0)
+    txt.Position = UDim2.new(0, CHECK_SIZE + 8, 0, 0)
     txt.BackgroundTransparency = 1
     txt.Text = label
-    txt.TextColor3 = C.text
+    txt.TextColor3 = C.textDark
     txt.FontFace = FONT
-    txt.TextSize = FONT_SIZE
+    txt.TextSize = TEXT_SIZE
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Parent = row
 
     local function setVal(v)
         value = v
-        box.BackgroundColor3 = v and C.checkOn or C.checkOff
-        checkMark.Text = v and "✓" or ""
+        box.BackgroundColor3 = v and C.checkOnBg or C.checkOffBg
+        mark.Text = v and "✓" or ""
         lib._flags[flag].value = v
         callback(v)
     end
 
     row.MouseButton1Click:Connect(function() setVal(not value) end)
-
     lib._flags[flag] = { value = value, set = setVal }
     if value then callback(value) end
     return row
@@ -345,42 +348,47 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
 
     local frame = Instance.new("Frame")
     frame.Name = "S_" .. flag
-    frame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT + 10)
+    frame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT + 12)
     frame.BackgroundTransparency = 1
     frame.BorderSizePixel = 0
     frame.Parent = self._content
 
     local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, -45, 0, 14)
+    txt.Size = UDim2.new(1, -50, 0, 18)
     txt.Position = UDim2.new(0, 2, 0, 0)
     txt.BackgroundTransparency = 1
     txt.Text = label
-    txt.TextColor3 = C.text
+    txt.TextColor3 = C.textDark
     txt.FontFace = FONT
-    txt.TextSize = FONT_SIZE
+    txt.TextSize = TEXT_SIZE
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Parent = frame
 
     local valTxt = Instance.new("TextLabel")
-    valTxt.Size = UDim2.new(0, 40, 0, 14)
-    valTxt.Position = UDim2.new(1, -42, 0, 0)
+    valTxt.Size = UDim2.new(0, 45, 0, 18)
+    valTxt.Position = UDim2.new(1, -47, 0, 0)
     valTxt.BackgroundTransparency = 1
     valTxt.Text = tostring(value)
-    valTxt.TextColor3 = C.text
-    valTxt.FontFace = FONT
-    valTxt.TextSize = 13
+    valTxt.TextColor3 = C.textDark
+    valTxt.FontFace = FONT_REG
+    valTxt.TextSize = 15
     valTxt.TextXAlignment = Enum.TextXAlignment.Right
     valTxt.Parent = frame
 
     local track = Instance.new("Frame")
-    track.Size = UDim2.new(1, -4, 0, 6)
-    track.Position = UDim2.new(0, 2, 0, 18)
+    track.Size = UDim2.new(1, -4, 0, 8)
+    track.Position = UDim2.new(0, 2, 0, 22)
     track.BackgroundColor3 = C.sliderBg
     track.BorderSizePixel = 0
     track.Parent = frame
 
+    local tStroke = Instance.new("UIStroke")
+    tStroke.Color = C.checkBorder
+    tStroke.Thickness = 1
+    tStroke.Parent = track
+
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(math.clamp((value - min) / (max - min), 0, 1), 0, 1, 0)
+    fill.Size = UDim2.new(math.clamp((value-min)/(max-min), 0, 1), 0, 1, 0)
     fill.BackgroundColor3 = C.sliderFill
     fill.BorderSizePixel = 0
     fill.Parent = track
@@ -393,8 +401,8 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
 
     local function setVal(v)
         v = math.clamp(v, min, max)
-        if rounding >= 1 then v = math.floor(v / rounding + 0.5) * rounding
-        else local m = 1/rounding; v = math.floor(v * m + 0.5) / m end
+        if rounding >= 1 then v = math.floor(v/rounding+0.5)*rounding
+        else local m=1/rounding; v = math.floor(v*m+0.5)/m end
         value = v
         fill.Size = UDim2.new((v-min)/(max-min), 0, 1, 0)
         valTxt.Text = tostring(v)
@@ -422,24 +430,20 @@ function Tab:AddButton(label, callback)
 
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
-    btn.BackgroundColor3 = C.btnBg
-    btn.BackgroundTransparency = 0.2
+    btn.BackgroundColor3 = C.btnFace
     btn.BorderSizePixel = 0
     btn.Text = label
-    btn.TextColor3 = C.text
+    btn.TextColor3 = C.textDark
     btn.FontFace = FONT
-    btn.TextSize = FONT_SIZE
+    btn.TextSize = TEXT_SIZE
     btn.AutoButtonColor = false
     btn.Parent = self._content
 
     local s = Instance.new("UIStroke")
-    s.Color = C.btnBorder
-    s.Thickness = 1
-    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    s.Parent = btn
+    s.Color = C.btnBorder; s.Thickness = 2; s.Parent = btn
 
-    btn.MouseEnter:Connect(function() btn.BackgroundTransparency = 0 end)
-    btn.MouseLeave:Connect(function() btn.BackgroundTransparency = 0.2 end)
+    btn.MouseEnter:Connect(function() btn.BackgroundColor3 = C.tabFace end)
+    btn.MouseLeave:Connect(function() btn.BackgroundColor3 = C.btnFace end)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
@@ -447,19 +451,14 @@ end
 -- ===== LABEL =====
 function Tab:AddLabel(text)
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 18)
+    lbl.Size = UDim2.new(1, 0, 0, 20)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = C.text
-    lbl.FontFace = FONT
+    lbl.TextColor3 = C.textDark
+    lbl.FontFace = FONT_REG
     lbl.TextSize = 14
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = self._content
-
-    local p = Instance.new("UIPadding")
-    p.PaddingLeft = UDim.new(0, 2)
-    p.Parent = lbl
-
     local obj = {_label = lbl}
     function obj:Set(t) lbl.Text = t end
     return obj
@@ -468,8 +467,8 @@ end
 -- ===== SEPARATOR =====
 function Tab:AddSeparator()
     local s = Instance.new("Frame")
-    s.Size = UDim2.new(1, 0, 0, 1)
-    s.BackgroundColor3 = C.frameBorder
+    s.Size = UDim2.new(1, 0, 0, 2)
+    s.BackgroundColor3 = C.contentBorder
     s.BorderSizePixel = 0
     s.Parent = self._content
 end
@@ -481,46 +480,29 @@ function Tab:AddConfigSection(lib)
 
     local inputFrame = Instance.new("Frame")
     inputFrame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
-    inputFrame.BackgroundColor3 = C.btnBg
-    inputFrame.BackgroundTransparency = 0.2
+    inputFrame.BackgroundColor3 = C.btnFace
     inputFrame.BorderSizePixel = 0
     inputFrame.Parent = self._content
-
-    local iStroke = Instance.new("UIStroke")
-    iStroke.Color = C.btnBorder
-    iStroke.Thickness = 1
-    iStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    iStroke.Parent = inputFrame
+    local iS = Instance.new("UIStroke"); iS.Color = C.btnBorder; iS.Thickness = 2; iS.Parent = inputFrame
 
     local inputBox = Instance.new("TextBox")
     inputBox.Size = UDim2.new(1, -8, 1, 0)
     inputBox.Position = UDim2.new(0, 4, 0, 0)
     inputBox.BackgroundTransparency = 1
-    inputBox.Text = ""
-    inputBox.PlaceholderText = "Config name..."
-    inputBox.PlaceholderColor3 = Color3.fromRGB(80, 80, 85)
-    inputBox.TextColor3 = C.text
-    inputBox.FontFace = FONT
-    inputBox.TextSize = FONT_SIZE
+    inputBox.Text = ""; inputBox.PlaceholderText = "Config name..."
+    inputBox.PlaceholderColor3 = Color3.fromRGB(100, 103, 108)
+    inputBox.TextColor3 = C.textDark
+    inputBox.FontFace = FONT_REG; inputBox.TextSize = TEXT_SIZE
     inputBox.TextXAlignment = Enum.TextXAlignment.Left
     inputBox.ClearTextOnFocus = false
     inputBox.Parent = inputFrame
 
-    self:AddButton("Save Config", function()
-        local n = inputBox.Text; if n == "" then return end; lib:SaveConfig(n)
-    end)
-    self:AddButton("Load Config", function()
-        local n = inputBox.Text; if n == "" then return end; lib:LoadConfig(n)
-    end)
-    self:AddButton("Delete Config", function()
-        local n = inputBox.Text; if n == "" then return end; lib:DeleteConfig(n)
-    end)
-    self:AddButton("Set Autoload", function()
-        local n = inputBox.Text; if n == "" then return end; lib:SetAutoload(n)
-    end)
+    self:AddButton("Save Config", function() local n=inputBox.Text; if n=="" then return end; lib:SaveConfig(n) end)
+    self:AddButton("Load Config", function() local n=inputBox.Text; if n=="" then return end; lib:LoadConfig(n) end)
+    self:AddButton("Delete Config", function() local n=inputBox.Text; if n=="" then return end; lib:DeleteConfig(n) end)
+    self:AddButton("Set Autoload", function() local n=inputBox.Text; if n=="" then return end; lib:SetAutoload(n) end)
 end
 
--- ===== DESTROY =====
 function Library:Destroy()
     if self._screenGui then self._screenGui:Destroy() end
 end
