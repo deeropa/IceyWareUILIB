@@ -14,7 +14,7 @@ local HS = game:GetService("HttpService")
 -- Colors derived from the Studio base: RGB(81,81,81)
 local C = {
     mainBg      = Color3.fromRGB(81, 81, 81),       -- exact from Studio
-    contentBg   = Color3.fromRGB(71, 71, 71),        -- slightly darker for inset content
+    contentBg   = Color3.fromRGB(81, 81, 81),        -- same as main frame
     tabFace     = Color3.fromRGB(75, 75, 75),         -- tab default
     tabActive   = Color3.fromRGB(90, 90, 90),         -- tab selected (lighter)
     tabBorder   = Color3.fromRGB(55, 55, 55),         -- tab border
@@ -127,61 +127,66 @@ function Library:CreateWindow(title, toggleKey)
     if not sg.Parent then sg.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
     self._screenGui = sg
 
-    -- MainFrame — EXACT from Studio export
+    -- Wrapper frame (holds tabs + main together for dragging/visibility)
+    local wrapper = Instance.new("Frame")
+    wrapper.Name = "Wrapper"
+    wrapper.Size = UDim2.new(0, 458, 0, 326 + TH + 4)
+    wrapper.Position = UDim2.new(0.5, -229, 0.5, -163 - TH - 4)
+    wrapper.BackgroundTransparency = 1
+    wrapper.Parent = sg
+    self._wrapper = wrapper
+
+    -- Tab bar — OUTSIDE main frame, just above it
+    local tabBar = Instance.new("Frame")
+    tabBar.Name = "TabBar"
+    tabBar.Size = UDim2.new(1, 0, 0, TH)
+    tabBar.Position = UDim2.new(0, 0, 0, 0)
+    tabBar.BackgroundTransparency = 1
+    tabBar.ClipsDescendants = false
+    tabBar.Parent = wrapper
+
+    local tLayout = Instance.new("UIListLayout")
+    tLayout.FillDirection = Enum.FillDirection.Horizontal
+    tLayout.Padding = UDim.new(0, 3)
+    tLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tLayout.Parent = tabBar
+
+    self._tabBar = tabBar
+
+    -- MainFrame — EXACT from Studio export, below tabs with 2px gap
     local main = Instance.new("Frame")
     main.Name = "MainFrame"
     main.BackgroundColor3 = C.mainBg
-    main.BorderColor3 = Color3.fromRGB(255, 255, 255)
     main.BorderSizePixel = 0
-    main.Position = UDim2.new(0.5, -229, 0.5, -163)
-    main.Size = UDim2.new(0, 458, 0, 326)
-    main.Parent = sg
+    main.Position = UDim2.new(0, 0, 0, TH + 2)
+    main.Size = UDim2.new(1, 0, 0, 326)
+    main.Parent = wrapper
     corner(main)
     self._main = main
 
-    -- Outer stroke
+    -- Outer stroke on main frame
     local outerStroke = Instance.new("UIStroke")
     outerStroke.Color = C.border
     outerStroke.Thickness = 2
     outerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     outerStroke.Parent = main
 
-    -- Tab bar across the top
-    local tabBar = Instance.new("Frame")
-    tabBar.Name = "TabBar"
-    tabBar.Size = UDim2.new(1, -8, 0, TH + 4)
-    tabBar.Position = UDim2.new(0, 4, 0, 4)
-    tabBar.BackgroundTransparency = 1
-    tabBar.ClipsDescendants = true
-    tabBar.Parent = main
-
-    local tLayout = Instance.new("UIListLayout")
-    tLayout.FillDirection = Enum.FillDirection.Horizontal
-    tLayout.Padding = UDim.new(0, 2)
-    tLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tLayout.Parent = tabBar
-
-    self._tabBar = tabBar
-    makeDraggable(main, tabBar)
-
-    -- Content area — inset, slightly darker
+    -- Content area — SAME color as main, fills the frame
     local content = Instance.new("Frame")
     content.Name = "Content"
-    content.Size = UDim2.new(1, -10, 1, -TH - 14)
-    content.Position = UDim2.new(0, 5, 0, TH + 10)
+    content.Size = UDim2.new(1, -10, 1, -10)
+    content.Position = UDim2.new(0, 5, 0, 5)
     content.BackgroundColor3 = C.contentBg
     content.BorderSizePixel = 0
     content.ClipsDescendants = true
     content.Parent = main
     corner(content)
-
-    local cStroke = Instance.new("UIStroke")
-    cStroke.Color = C.border
-    cStroke.Thickness = 1
-    cStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    cStroke.Parent = content
-
     self._contentArea = content
+
+    -- Drag via tabs (moves the wrapper)
+    makeDraggable(wrapper, tabBar)
+    -- Also drag via the main frame body
+    makeDraggable(wrapper, main)
 
     -- Toggle key
     toggleKey = toggleKey or "K"
@@ -189,7 +194,7 @@ function Library:CreateWindow(title, toggleKey)
         if gpe then return end
         if input.KeyCode == Enum.KeyCode[toggleKey] then
             self._visible = not self._visible
-            main.Visible = self._visible
+            wrapper.Visible = self._visible
         end
     end)
 
