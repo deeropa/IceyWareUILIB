@@ -263,6 +263,127 @@ function Library:SelectTab(index)
     end
 end
 
+-- ===== Dialog (modal confirmation popup) =====
+-- Usage: Window:Dialog({ Title = "...", Content = "...", Buttons = { {Title, Callback}, ... } })
+function Library:Dialog(opts)
+    opts = opts or {}
+    local title = opts.Title or "Dialog"
+    local content = opts.Content or ""
+    local buttons = opts.Buttons or {}
+
+    -- Dark overlay
+    local overlay = Instance.new("Frame")
+    overlay.Name = "DialogOverlay"
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+    overlay.BackgroundTransparency = 0.5
+    overlay.BorderSizePixel = 0
+    overlay.ZIndex = 100
+    overlay.Parent = self._screenGui
+
+    -- Dialog box
+    local box = Instance.new("Frame")
+    box.Name = "DialogBox"
+    box.Size = UDim2.new(0, 280, 0, 0)
+    box.AutomaticSize = Enum.AutomaticSize.Y
+    box.Position = UDim2.new(0.5, -140, 0.5, -60)
+    box.BackgroundColor3 = C.mainBg
+    box.BorderSizePixel = 0
+    box.ZIndex = 101
+    box.Parent = overlay
+    corner(box, UDim.new(0, 4))
+
+    local boxStroke = Instance.new("UIStroke")
+    boxStroke.Color = C.border
+    boxStroke.Thickness = 2
+    boxStroke.Parent = box
+
+    local boxPad = Instance.new("UIPadding")
+    boxPad.PaddingTop = UDim.new(0, 10)
+    boxPad.PaddingBottom = UDim.new(0, 10)
+    boxPad.PaddingLeft = UDim.new(0, 12)
+    boxPad.PaddingRight = UDim.new(0, 12)
+    boxPad.Parent = box
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = box
+
+    -- Title
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 20)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = C.white
+    titleLabel.FontFace = FONT
+    titleLabel.TextSize = 16
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.ZIndex = 102
+    titleLabel.LayoutOrder = 1
+    titleLabel.Parent = box
+
+    -- Content
+    local contentLabel = Instance.new("TextLabel")
+    contentLabel.Size = UDim2.new(1, 0, 0, 0)
+    contentLabel.AutomaticSize = Enum.AutomaticSize.Y
+    contentLabel.BackgroundTransparency = 1
+    contentLabel.Text = content
+    contentLabel.TextColor3 = C.text
+    contentLabel.FontFace = FONT
+    contentLabel.TextSize = 14
+    contentLabel.TextWrapped = true
+    contentLabel.TextXAlignment = Enum.TextXAlignment.Left
+    contentLabel.ZIndex = 102
+    contentLabel.LayoutOrder = 2
+    contentLabel.Parent = box
+
+    -- Button row
+    local btnRow = Instance.new("Frame")
+    btnRow.Size = UDim2.new(1, 0, 0, 28)
+    btnRow.BackgroundTransparency = 1
+    btnRow.ZIndex = 102
+    btnRow.LayoutOrder = 3
+    btnRow.Parent = box
+
+    local btnLayout = Instance.new("UIListLayout")
+    btnLayout.FillDirection = Enum.FillDirection.Horizontal
+    btnLayout.Padding = UDim.new(0, 8)
+    btnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    btnLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    btnLayout.Parent = btnRow
+
+    for idx, bInfo in ipairs(buttons) do
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 80, 0, 26)
+        b.BackgroundColor3 = idx == 1 and C.accent or C.btnFace
+        b.BorderSizePixel = 0
+        b.Text = bInfo.Title or "OK"
+        b.TextColor3 = C.white
+        b.FontFace = FONT
+        b.TextSize = 13
+        b.AutoButtonColor = false
+        b.ZIndex = 103
+        b.LayoutOrder = idx
+        b.Parent = btnRow
+        corner(b, UDim.new(0, 3))
+
+        local bStroke = Instance.new("UIStroke")
+        bStroke.Color = C.border
+        bStroke.Thickness = 1
+        bStroke.Parent = b
+
+        b.MouseEnter:Connect(function() b.BackgroundColor3 = C.tabActive end)
+        b.MouseLeave:Connect(function() b.BackgroundColor3 = idx == 1 and C.accent or C.btnFace end)
+        b.MouseButton1Click:Connect(function()
+            overlay:Destroy()
+            if bInfo.Callback then
+                bInfo.Callback()
+            end
+        end)
+    end
+end
+
 -- ===== Tab =====
 local Tab = {}
 Tab.__index = Tab
@@ -276,7 +397,13 @@ function Library:_switchTab(tab)
     tab._button.BackgroundColor3 = C.tabActive
 end
 
-function Library.AddTab(self, name)
+function Library.AddTab(self, nameOrOpts)
+    local name
+    if type(nameOrOpts) == "table" then
+        name = nameOrOpts.Title or "Tab"
+    else
+        name = nameOrOpts or "Tab"
+    end
     local tab = setmetatable({}, Tab)
     tab._library = self
 
@@ -479,7 +606,7 @@ function Tab:AddSlider(flag, labelOrOpts, default, min, max, rounding, callback)
     trkStroke.Parent = trk
 
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(math.clamp((val - min) / (max - min), 0, 1), 0, 1, 0)
+    fill.Size = UDim2.new((max > min) and math.clamp((val - min) / (max - min), 0, 1) or 0, 0, 1, 0)
     fill.BackgroundTransparency = 1
     fill.BorderSizePixel = 0
     fill.Parent = trk
@@ -501,14 +628,17 @@ function Tab:AddSlider(flag, labelOrOpts, default, min, max, rounding, callback)
 
     local function set(v)
         v = math.clamp(v, min, max)
-        if rounding >= 1 then
-            v = math.floor(v / rounding + 0.5) * rounding
+        -- Rounding: 0 means integer (same as 1), >0 means step size
+        if rounding <= 0 or rounding >= 1 then
+            local step = math.max(rounding, 1)
+            v = math.floor(v / step + 0.5) * step
         else
             local m = 1 / rounding
             v = math.floor(v * m + 0.5) / m
         end
         val = v
-        fill.Size = UDim2.new((v - min) / (max - min), 0, 1, 0)
+        local ratio = (max > min) and ((v - min) / (max - min)) or 0
+        fill.Size = UDim2.new(ratio, 0, 1, 0)
         knob.Position = UDim2.new(fill.Size.X.Scale, -3, 0.5, -7)
         txt.Text = label .. ": " .. tostring(v)
         lib._flags[flag].value = v
@@ -1067,6 +1197,7 @@ function Tab:AddDropdown(flag, labelOrOpts, options, default, callback)
                 arrow.Text = "▼"
                 if lib and flag then lib._flags[flag].value = selected end
                 callback(selected)
+                if _onChangedCb then _onChangedCb(selected) end
             end)
         end
     end
