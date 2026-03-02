@@ -158,7 +158,7 @@ function Library:CreateWindow(title, toggleKey)
     main.Name = "MainFrame"
     main.BackgroundColor3 = C.mainBg
     main.BorderSizePixel = 0
-    main.Position = UDim2.new(0, 0, 0, TH + 6)
+    main.Position = UDim2.new(0, 0, 0, TH + 4)
     main.Size = UDim2.new(1, 0, 0, 326)
     main.Parent = wrapper
     corner(main)
