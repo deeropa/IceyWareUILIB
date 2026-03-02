@@ -18,7 +18,7 @@ local C = {
     tabFace     = Color3.fromRGB(65, 65, 68),         -- exact from color picker
     tabActive   = Color3.fromRGB(75, 75, 78),         -- active tab (subtly lighter)
     tabBorder   = Color3.fromRGB(41, 43, 45),         -- exact from screenshot
-    border      = Color3.fromRGB(50, 50, 50),         -- main frame border
+    border      = Color3.fromRGB(41, 43, 45),         -- same as tab border
     checkOn     = Color3.fromRGB(45, 85, 140),        -- blue checkbox ON
     checkOff    = Color3.fromRGB(200, 200, 200),      -- light checkbox OFF
     checkBorder = Color3.fromRGB(40, 40, 40),         -- checkbox border
@@ -167,7 +167,7 @@ function Library:CreateWindow(title, toggleKey)
     -- Outer stroke on main frame
     local outerStroke = Instance.new("UIStroke")
     outerStroke.Color = C.border
-    outerStroke.Thickness = 2
+    outerStroke.Thickness = 3
     outerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     outerStroke.Parent = main
 
