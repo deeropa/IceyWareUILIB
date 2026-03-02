@@ -13,21 +13,22 @@ local HS = game:GetService("HttpService")
 
 -- Colors derived from the Studio base: RGB(81,81,81)
 local C = {
-    mainBg      = Color3.fromRGB(81, 81, 81),       -- exact from Studio
-    contentBg   = Color3.fromRGB(81, 81, 81),        -- same as main frame
-    tabFace     = Color3.fromRGB(65, 65, 68),         -- exact from color picker
-    tabActive   = Color3.fromRGB(75, 75, 78),         -- active tab (subtly lighter)
-    tabBorder   = Color3.fromRGB(41, 43, 45),         -- exact from screenshot
-    border      = Color3.fromRGB(41, 43, 45),         -- same as tab border
-    checkOn     = Color3.fromRGB(45, 85, 140),        -- blue checkbox ON
-    checkOff    = Color3.fromRGB(200, 200, 200),      -- light checkbox OFF
-    checkBorder = Color3.fromRGB(40, 40, 40),         -- checkbox border
-    text        = Color3.fromRGB(220, 220, 220),      -- white/light text (IceyWare uses light text on grey)
-    textLight   = Color3.fromRGB(220, 220, 220),      -- tab text
+    mainBg      = Color3.fromRGB(55, 55, 57),       -- slightly darker
+    contentBg   = Color3.fromRGB(55, 55, 57),
+    tabFace     = Color3.fromRGB(45, 45, 47),         -- darker tab
+    tabActive   = Color3.fromRGB(55, 55, 57),         -- tab matches main when active
+    tabBorder   = Color3.fromRGB(30, 30, 32),
+    border      = Color3.fromRGB(30, 30, 32),
+    checkOn     = Color3.fromRGB(40, 40, 42),         -- dark checkbox
+    checkOff    = Color3.fromRGB(40, 40, 42),         -- dark checkbox
+    checkBorder = Color3.fromRGB(30, 30, 32),
+    text        = Color3.fromRGB(200, 200, 204),
+    textLight   = Color3.fromRGB(200, 200, 204),
     white       = Color3.fromRGB(255, 255, 255),
-    sliderFill  = Color3.fromRGB(45, 85, 140),
-    sliderBg    = Color3.fromRGB(60, 60, 60),
-    btnFace     = Color3.fromRGB(75, 75, 75),
+    sliderFill  = Color3.fromRGB(40, 40, 42),
+    sliderBg    = Color3.fromRGB(35, 35, 37),
+    btnFace     = Color3.fromRGB(50, 50, 52),
+    accent      = Color3.fromRGB(255, 255, 255),      -- white accents for icons/knobs
 }
 
 local FONT = Font.fromEnum(Enum.Font.SourceSansBold)
@@ -158,10 +159,10 @@ function Library:CreateWindow(title, toggleKey)
     main.Name = "MainFrame"
     main.BackgroundColor3 = C.mainBg
     main.BorderSizePixel = 0
-    main.Position = UDim2.new(0, 0, 0, TH + 4)
-    main.Size = UDim2.new(1, 0, 0, 326)
+    main.Position = UDim2.new(0, 0, 0, TH + 2)
+    main.Size = UDim2.new(1, 0, 0, 300)
     main.Parent = wrapper
-    corner(main)
+    corner(main, UDim.new(0, 1))
     self._main = main
 
     -- Outer stroke on main frame
@@ -180,7 +181,7 @@ function Library:CreateWindow(title, toggleKey)
     content.BorderSizePixel = 0
     content.ClipsDescendants = true
     content.Parent = main
-    corner(content)
+    corner(content, UDim.new(0, 1))
     self._contentArea = content
 
     -- Drag via tabs (moves the wrapper)
@@ -227,7 +228,7 @@ function Library.AddTab(self, name)
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.Parent = self._tabBar
-    corner(btn, UDim.new(0, 6))
+    corner(btn, UDim.new(0, 2))
 
     local bStroke = Instance.new("UIStroke")
     bStroke.Color = C.tabBorder
@@ -236,8 +237,8 @@ function Library.AddTab(self, name)
     bStroke.Parent = btn
 
     local bPad = Instance.new("UIPadding")
-    bPad.PaddingLeft = UDim.new(0, 16)
-    bPad.PaddingRight = UDim.new(0, 16)
+    bPad.PaddingLeft = UDim.new(0, 10)
+    bPad.PaddingRight = UDim.new(0, 10)
     bPad.Parent = btn
 
     local bLabel = Instance.new("TextLabel")
@@ -306,7 +307,7 @@ function Tab:AddToggle(flag, label, default, callback)
     box.BackgroundColor3 = val and C.checkOn or C.checkOff
     box.BorderSizePixel = 0
     box.Parent = row
-    corner(box, UDim.new(0, 3))
+    corner(box, UDim.new(0, 2))
 
     local bxStroke = Instance.new("UIStroke")
     bxStroke.Color = C.checkBorder
@@ -345,7 +346,6 @@ function Tab:AddToggle(flag, label, default, callback)
 
     row.MouseButton1Click:Connect(function() set(not val) end)
     lib._flags[flag] = { value = val, set = set }
-    if val then callback(val) end
     return row
 end
 
@@ -400,6 +400,15 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
     fill.Parent = trk
     corner(fill, UDim.new(0, 4))
 
+    local knob = Instance.new("Frame")
+    knob.Name = "Knob"
+    knob.Size = UDim2.new(0, 6, 0, 14)
+    knob.Position = UDim2.new(fill.Size.X.Scale, -3, 0.5, -7)
+    knob.BackgroundColor3 = C.accent
+    knob.BorderSizePixel = 0
+    knob.Parent = trk
+    corner(knob, UDim.new(0, 2))
+
     local hit = Instance.new("TextButton")
     hit.Size = UDim2.new(1, 0, 1, 0)
     hit.BackgroundTransparency = 1
@@ -416,6 +425,7 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
         end
         val = v
         fill.Size = UDim2.new((v - min) / (max - min), 0, 1, 0)
+        knob.Position = UDim2.new(fill.Size.X.Scale, -3, 0.5, -7)
         vt.Text = tostring(v)
         lib._flags[flag].value = v
         callback(v)
@@ -435,6 +445,72 @@ function Tab:AddSlider(flag, label, default, min, max, rounding, callback)
 
     lib._flags[flag] = { value = val, set = set }
     return fr
+end
+
+-- ===== Keybind =====
+function Tab:AddKeybind(flag, label, default, callback)
+    local lib = self._library
+    local current = default or Enum.KeyCode.F2
+    callback = callback or function() end
+
+    local row = Instance.new("Frame")
+    row.Name = "K_" .. flag
+    row.Size = UDim2.new(1, 0, 0, RH)
+    row.BackgroundTransparency = 1
+    row.Parent = self._content
+
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(1, -70, 1, 0)
+    txt.Position = UDim2.new(0, 0, 0, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = label
+    txt.TextColor3 = C.text
+    txt.FontFace = FONT
+    txt.TextSize = TS
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.Parent = row
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 60, 0, 22)
+    btn.Position = UDim2.new(1, -62, 0.5, -11)
+    btn.BackgroundColor3 = C.btnFace
+    btn.Text = current.Name
+    btn.TextColor3 = C.text
+    btn.FontFace = FONT_R
+    btn.TextSize = 14
+    btn.Parent = row
+    corner(btn, UDim.new(0, 2))
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = C.tabBorder
+    stroke.Thickness = 1
+    stroke.Parent = btn
+
+    local binding = false
+    btn.MouseButton1Click:Connect(function()
+        btn.Text = "..."
+        binding = true
+    end)
+
+    UIS.InputBegan:Connect(function(i)
+        if binding and i.UserInputType == Enum.UserInputType.Keyboard then
+            current = i.KeyCode
+            btn.Text = current.Name
+            binding = false
+            lib._flags[flag].value = current
+            callback(current)
+        end
+    end)
+
+    local function set(v)
+        current = v
+        btn.Text = v.Name
+        lib._flags[flag].value = v
+        callback(v)
+    end
+
+    lib._flags[flag] = { value = current, set = set }
+    return row
 end
 
 -- ===== Button =====
